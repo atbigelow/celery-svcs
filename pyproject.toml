@@ -1,11 +1,11 @@
 [project]
 name = "celery-svcs"
-version = "0.1.1"
+version = "0.1.2"
 description = "A Celery integration for SVCS"
 license = "MIT"
 license-files = ["LICENSE"]
 readme = "README.md"
-authors = [{ name = "August Bigelow", email = "dev@atbigelow.com" }]
+authors = [{ name = "August Trapper Bigelow", email = "dev@atbigelow.com" }]
 requires-python = ">=3.11"
 dependencies = ["celery>=5.4.0", "svcs>=25.1.0"]
 

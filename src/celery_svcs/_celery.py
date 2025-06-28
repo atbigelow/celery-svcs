@@ -1,4 +1,5 @@
 import celery
+from celery.signals import task_postrun, task_prerun
 from svcs import Container, Registry
 
 # Copied from svcs library
@@ -10,8 +11,9 @@ def svcs_from(
     task: celery.Task | None = None,
 ) -> Container:
     """Get a Container from a specified Task. Or if None given, attempt to retrieve it from the current task."""
-    if task is None:
-        task = celery.current_task
+
+    # Explicit Task or use the current_task
+    task = task or celery.current_task
 
     # Attach the container to the Task's current request context
     request = task.request
@@ -21,6 +23,7 @@ def svcs_from(
 
 def get_registry(app: celery.Celery) -> Registry:
     """Get a svcs Registry attached to a Celery instance."""
+
     app = app or celery.current_app
 
     return getattr(app, _KEY_REGISTRY)
@@ -32,35 +35,32 @@ def init(
     registry: Registry | None = None,
 ):
     """Initialize a Celery instance with a svcs Registry."""
-    setattr(app, _KEY_REGISTRY, registry or Registry())
 
-    _connect_signals()  # TODO: Only needs to be called once
+    setattr(app, _KEY_REGISTRY, registry or Registry())
 
 
 def close_registry(app: celery.Celery):
     """Close the svcs Registry attached to a Celery instance."""
+
     get_registry(app).close()
 
 
-def _connect_signals():
-    """Connect signals from Celery."""
-    celery.signals.task_prerun.connect(_celery_svcs_task_prerun)
-    celery.signals.task_postrun.connect(_celery_svcs_task_postrun)
-
-
-def _celery_svcs_task_prerun(*args, **kwargs):
+# Attach signals to Celery; by importing this module, we're going to assume the desire to use svcs with Celery.
+@task_prerun.connect
+def _celery_svcs_task_prerun(task: celery.Task, *args, **kwargs):
     """Attach a container to a Task request before it runs. Only instantiates a Container if the Task's Celery app was svcs-ed."""
 
-    task = kwargs.get("task")
-    if task and hasattr(task.app, _KEY_REGISTRY):
-        container = Container(getattr(task.app, _KEY_REGISTRY))
+    registry: Registry | None
+    if registry := getattr(task.app, _KEY_REGISTRY, None):
+        container = Container(registry)
+
         setattr(task.request, _KEY_CONTAINER, container)
 
 
-def _celery_svcs_task_postrun(*args, **kwargs):
+@task_postrun.connect
+def _celery_svcs_task_postrun(task: celery.Task, *args, **kwarg):
     """Close a container when a Task request is finished, regardless of success. Only closes a Container if the Task's Celery app was svcs-ed."""
 
-    task = kwargs.get("task")
-    if task and hasattr(task.app, _KEY_REGISTRY):
-        container = getattr(task.request, _KEY_CONTAINER)
+    container: Container | None
+    if hasattr(task.app, _KEY_REGISTRY) and (container := getattr(task.app, _KEY_CONTAINER, None)):
         container.close()
