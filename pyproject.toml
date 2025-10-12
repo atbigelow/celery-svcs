@@ -20,7 +20,10 @@ build-backend = "hatchling.build"
 packages = ["src/celery_svcs"]
 
 [dependency-groups]
-dev = ["ruff>=0.9.6"]
+dev = [
+    "pytest>=8.4.2",
+    "ruff>=0.9.6",
+]
 
 [tool.ruff]
 line-length = 120
