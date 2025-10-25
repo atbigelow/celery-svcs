@@ -1,6 +1,6 @@
 [project]
 name = "celery-svcs"
-version = "0.1.2"
+version = "25.10.0"
 description = "A Celery integration for SVCS"
 license = "MIT"
 license-files = ["LICENSE"]
